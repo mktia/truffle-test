@@ -5,41 +5,52 @@
     <p v-if="!account">アカウントが見つからないよ</p>
     <input v-model="newIdea" type="text" name="" value="" placeholder="なんか書いてみたら？">
     <button @click="postIdea">投稿</button>
+    <ul>
+      <li v-for="idea in ideas">
+        {{idea.content}}
+      </li>
+    </ul>
     <p v-if="contractAddress">コントラクトアドレス: {{contractAddress}}</p>
     <p v-if="!contractAddress">コントラクトアドレスが見つからないよ</p>
   </div>
 </template>
 
 <script>
-import Web3 from 'web3'
-import contract from 'truffle-contract'
-import artifacts from '../../build/contracts/IdeaFactory.json'
-const IdeaFactory = contract(artifacts)
+/* eslint-disable */
+const Web3 = require('web3')
+
+const json = require('../../build/contracts/IdeaFactory.json')
+const address = '0xf86ed6781b020b00a6b0ba0f8c6d8e08c8e59be6'
+// eslint-disable-next-line
+const IdeaFactory = web3.eth.contract(json.abi).at(address)
 
 export default {
-  name: 'HelloWorld',
+  name: 'Online',
   data () {
     return {
-      contractAddress: null,
+      contractAddress: address,
       account: null,
-      newIdea: null
+      newIdea: null,
+      ideas: []
     }
   },
   created () {
     if (typeof web3 !== 'undefined') {
-      // eslint-disable-next-line
       web3 = new Web3(web3.currentProvider)
     } else {
       console.warn("No web3 detected. Falling back to http://127.0.0.1:7545. You should remove this fallback when you deploy live, as it's inherently insecure. Consider switching to Metamask for development. More info here: http://truffleframework.com/tutorials/truffle-and-metamask")
 
       // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-      // eslint-disable-next-line
-      web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:7545'))
+      web3 = new Web3('http://127.0.0.1:7545')
     }
 
-    // eslint-disable-next-line
-    IdeaFactory.setProvider(web3.currentProvider)
-    // eslint-disable-next-line
+    // IdeaFactory.setProvider(web3.currentProvider)
+    /*
+    web3.eth.getCoinbase()
+      .then((coinbase) => {
+        IdeaFactory.defaults({from: coinbase})
+      })*/
+
     web3.eth.getAccounts((error, accounts) => {
       if (error != null) {
         console.error(error)
@@ -50,25 +61,28 @@ export default {
         this.message = 'Couldn\'t get any accounts! Make sure your Ethereum client is configured correctly.'
         return
       }
-      console.log('success')
       this.account = accounts[0]
-      IdeaFactory.deployed()
-        .then((instance) => instance.address)
-        .then((address) => {
-          this.contractAddress = address
-        })
+      this.contractAddress = address
     })
   },
   methods: {
     postIdea () {
-      return IdeaFactory.deployed()
-        .then((instance) => instance.comeUpWithIdea(this.newIdea))
+      /*
+      return IdeaFactory.comeUpWithIdea(this.newIdea)
         .then(() => {
-          console.log(this.newIdea)
+          IdeaFactory.getIdeaCount()
+            .then((count) => {
+              for (var i = 0; i < count; i++) {
+                IdeaFactory.getIdea()
+                  .then((idea) => {
+                    this.ideas.push(idea)
+                  })
+              }
+            })
         })
         .catch((error) => {
           console.error(error)
-        })
+        })*/
     }
   }
 }

@@ -6,7 +6,7 @@
     <input v-model="newIdea" type="text" name="" value="" placeholder="なんか書いてみたら？">
     <button @click="postIdea">投稿</button>
     <ul>
-      <li class="idea-box" v-for="idea in ideas">
+      <li class="idea-box" v-for="idea in ideas" :key="idea">
         {{idea}}
       </li>
     </ul>
@@ -29,8 +29,7 @@ export default {
       contractAddress: null,
       account: null,
       newIdea: null,
-      ideas: [],
-      instance: null
+      ideas: []
     }
   },
   created () {
@@ -71,17 +70,22 @@ export default {
     IdeaFactory.deployed()
       .then((instance) => {
         var event = instance.NewIdea()
-        event.watch((error, result) => console.log(result.args.content))
+        event.watch((error, result) => {
+          if (!error) {
+            console.log(result.args.content)
+          }
+        })
+        this.contractAddress = instance.address
       })
   },
-  mounted () {
+  beforeMount () {
     IdeaFactory.deployed()
       .then((instance) => {
-        this.instance = instance
-        this.instance.getIdeaCount()
+        var contract = instance
+        contract.getIdeaCount()
           .then((count) => {
-            for (var i = 0; i < count.toString(10); i++) {
-              this.instance.getIdea(i)
+            for (var i = 0; i < parseInt(count.toString(10)); i++) {
+              contract.getIdea(i)
                 .then((idea) => this.ideas.unshift(idea))
             }
           })
@@ -91,12 +95,11 @@ export default {
     postIdea () {
       return IdeaFactory.deployed()
         .then((instance) => {
-          this.instance = instance
-          this.instance.comeUpWithIdea(this.newIdea)
-            .then((id) => {
-              this.instance.getIdea(id)
-                .then((idea) => this.ideas.unshift(idea))
-            })
+          var contract = instance
+          contract.comeUpWithIdea(this.newIdea)
+            .then((id) => contract.getIdeaCount())
+            .then((count) => contract.getIdea(count.toString(10)))
+            .then((idea) => this.ideas.unshift(idea))
         })
         .catch((error) => {
           console.error(error)

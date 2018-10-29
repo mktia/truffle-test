@@ -6,8 +6,8 @@
     <input v-model="newIdea" type="text" name="" value="" placeholder="なんか書いてみたら？">
     <button @click="postIdea">投稿</button>
     <ul>
-      <li v-for="idea in ideas">
-        {{idea.content}}
+      <li class="idea-box" v-for="idea in ideas" :key="idea">
+        {{idea}}
       </li>
     </ul>
     <p v-if="contractAddress">コントラクトアドレス: {{contractAddress}}</p>
@@ -16,19 +16,17 @@
 </template>
 
 <script>
-/* eslint-disable */
-const Web3 = require('web3')
-
-const json = require('../../build/contracts/IdeaFactory.json')
-const address = '0xf86ed6781b020b00a6b0ba0f8c6d8e08c8e59be6'
-// eslint-disable-next-line
-const IdeaFactory = web3.eth.contract(json.abi).at(address)
+// local
+import Web3 from 'web3'
+import contract from 'truffle-contract'
+import artifacts from '../../build/contracts/IdeaFactory.json'
+const IdeaFactory = contract(artifacts)
 
 export default {
-  name: 'Online',
+  name: 'TopPage',
   data () {
     return {
-      contractAddress: address,
+      contractAddress: null,
       account: null,
       newIdea: null,
       ideas: []
@@ -36,21 +34,26 @@ export default {
   },
   created () {
     if (typeof web3 !== 'undefined') {
+      // eslint-disable-next-line
       web3 = new Web3(web3.currentProvider)
     } else {
       console.warn("No web3 detected. Falling back to http://127.0.0.1:7545. You should remove this fallback when you deploy live, as it's inherently insecure. Consider switching to Metamask for development. More info here: http://truffleframework.com/tutorials/truffle-and-metamask")
 
       // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-      web3 = new Web3('http://127.0.0.1:7545')
+      // eslint-disable-next-line
+      web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:7545'))
     }
 
-    // IdeaFactory.setProvider(web3.currentProvider)
-    /*
+    // eslint-disable-next-line
+    IdeaFactory.setProvider(web3.currentProvider)
+
+    // eslint-disable-next-line
     web3.eth.getCoinbase()
       .then((coinbase) => {
         IdeaFactory.defaults({from: coinbase})
-      })*/
+      })
 
+    // eslint-disable-next-line
     web3.eth.getAccounts((error, accounts) => {
       if (error != null) {
         console.error(error)
@@ -62,27 +65,47 @@ export default {
         return
       }
       this.account = accounts[0]
-      this.contractAddress = address
     })
+
+    IdeaFactory.deployed()
+      .then((instance) => {
+        var event = instance.NewIdea()
+        event.watch((error, result) => {
+          if (!error) {
+            this.ideas.unshift(result.args.content)
+            this.newIdea = null
+            console.log(result.args.content)
+          }
+        })
+        this.contractAddress = instance.address
+      })
+  },
+  beforeMount () {
+    IdeaFactory.deployed()
+      .then((instance) => {
+        var contract = instance
+        contract.getIdeaCount()
+          .then((count) => {
+            for (var i = 0; i < parseInt(count.toString(10)); i++) {
+              contract.getIdea(i)
+                .then((idea) => this.ideas.unshift(idea))
+            }
+          })
+      })
   },
   methods: {
     postIdea () {
-      /*
-      return IdeaFactory.comeUpWithIdea(this.newIdea)
-        .then(() => {
-          IdeaFactory.getIdeaCount()
-            .then((count) => {
-              for (var i = 0; i < count; i++) {
-                IdeaFactory.getIdea()
-                  .then((idea) => {
-                    this.ideas.push(idea)
-                  })
-              }
-            })
+      return IdeaFactory.deployed()
+        .then((instance) => {
+          var contract = instance
+          contract.comeUpWithIdea(this.newIdea)
+            .then((id) => contract.getIdeaCount())
+            .then((count) => contract.getIdea(count.toString(10)))
+            .then((idea) => this.ideas.unshift(idea))
         })
         .catch((error) => {
           console.error(error)
-        })*/
+        })
     }
   }
 }
@@ -90,5 +113,15 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+li.idea-box {
+  border: 1px solid;
+  display: block;
+  margin: 0.5em auto;
+  padding: 0.5em;
+  width: 320px;
+}
 
+ul {
+  padding-left: 0;
+}
 </style>

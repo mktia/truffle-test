@@ -1,15 +1,16 @@
 import Vue from 'vue'
 import Router from 'vue-router'
-import Offline from '@/components/Offline'
+import TopPage from '@/components/TopPage'
 
 Vue.use(Router)
 
 export default new Router({
+  mode: 'history',
   routes: [
     {
       path: '/',
-      name: 'Offline',
-      component: Offline
+      name: 'TopPage',
+      component: TopPage
     }
   ]
 })
